@@ -71,6 +71,15 @@ def train_classification(model, loss_func, opt, scheduler, train_loader, dev, ep
 
             _, preds = logits.max(1)
             loss = loss.item()
+            if np.isnan(loss):
+                for i in range(model_output.shape[0]):
+                    print(f"Entry {i}")
+                    for k in data_config.input_names:
+                        print(k, X[k][i,:])
+                    print(model_output[i,:])
+                    print(logits[i])
+                raise RuntimeError("Loss is nan. Inputs shown above")
+
 
             num_batches += 1
             count += num_examples
@@ -120,6 +129,7 @@ def train_classification(model, loss_func, opt, scheduler, train_loader, dev, ep
 def evaluate_classification(model, test_loader, dev, epoch, for_training=True, loss_func=None, steps_per_epoch=None,
                             eval_metrics=['roc_auc_score', 'roc_auc_score_matrix', 'confusion_matrix'],
                             tb_helper=None):
+    torch.multiprocessing.set_sharing_strategy('file_system')
     model.eval()
 
     data_config = test_loader.dataset.config
@@ -138,6 +148,9 @@ def evaluate_classification(model, test_loader, dev, epoch, for_training=True, l
     with torch.no_grad():
         with tqdm.tqdm(test_loader) as tq:
             for X, y, Z in tq:
+                for k in data_config.input_names:
+                    if torch.isnan(X[k]).any():
+                        raise RuntimeError("Theres a nan in", k)
                 inputs = [X[k].to(dev) for k in data_config.input_names]
                 label = y[data_config.label_names[0]].long()
                 entry_count += label.shape[0]

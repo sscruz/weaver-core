@@ -279,3 +279,104 @@ class ParticleNetTagger(nn.Module):
         features = torch.cat((self.pf_conv(pf_features * pf_mask) * pf_mask, self.sv_conv(sv_features * sv_mask) * sv_mask), dim=2)
         mask = torch.cat((pf_mask, sv_mask), dim=2)
         return self.pn(points, features, mask)
+class ParticleNetWithHighLevel(nn.Module):
+
+    def __init__(self,
+                 input_dims,
+                 num_classes,
+                 high_level_dim,
+                 conv_params=[(7, (32, 32, 32)), (7, (64, 64, 64))],
+                 fc_params=[(128, 0.1)],
+                 fc_params2=[(64, 0.1),(32, 0.1)],
+                 use_fusion=True,
+                 use_fts_bn=True,
+                 use_counts=True,
+                 for_inference=False,
+                 **kwargs):
+        super(ParticleNetWithHighLevel, self).__init__(**kwargs)
+
+        self.use_fts_bn = use_fts_bn
+        if self.use_fts_bn:
+            self.bn_fts = nn.BatchNorm1d(input_dims)
+
+        self.use_counts = use_counts
+
+        self.edge_convs = nn.ModuleList()
+        for idx, layer_param in enumerate(conv_params):
+            k, channels = layer_param
+            in_feat = input_dims if idx == 0 else conv_params[idx - 1][1][-1]
+            self.edge_convs.append(EdgeConvBlock(k=k, in_feat=in_feat, out_feats=channels, cpu_mode=for_inference))
+
+        self.use_fusion = use_fusion
+        if self.use_fusion:
+            in_chn = sum(x[-1] for _, x in conv_params)
+            out_chn = np.clip((in_chn // 128) * 128, 128, 1024)
+            self.fusion_block = nn.Sequential(nn.Conv1d(in_chn, out_chn, kernel_size=1, bias=False), nn.BatchNorm1d(out_chn), nn.ReLU())
+
+
+        fcs = []; fcs2=[]
+        for idx, layer_param in enumerate(fc_params):
+            channels, drop_rate = layer_param
+            if idx == 0:
+                in_chn = out_chn if self.use_fusion else conv_params[-1][1][-1]
+            else:
+                in_chn = fc_params[idx - 1][0]
+
+            fcs.append(nn.Sequential(nn.Linear(in_chn, channels), nn.ReLU(), nn.Dropout(drop_rate)))
+
+        for idx, layer_param in enumerate(fc_params2):
+            channels, drop_rate = layer_param
+            if idx == 0:
+                in_chn = fc_params[-1][0]+high_level_dim # we will concatenate
+            else:
+                in_chn = fc_params2[idx - 1][0]
+
+            fcs2.append(nn.Sequential(nn.Linear(in_chn, channels), nn.ReLU(), nn.Dropout(drop_rate)))
+
+        fcs2.append(nn.Linear(fc_params2[-1][0], num_classes))
+
+        self.fc = nn.Sequential(*fcs)
+        self.fc2 = nn.Sequential(*fcs2)
+
+        self.for_inference = for_inference
+
+    def forward(self, points, features, high_level, mask=None):
+        high_level = torch.squeeze(high_level,dim=2)
+
+        print('sergio 3 points:\n', points)
+        print('sergio 3 features:\n', features)
+        if mask is None:
+            mask = (features.abs().sum(dim=1, keepdim=True) != 0)  # (N, 1, P)
+        points *= mask
+        features *= mask
+        coord_shift = (mask == 0) * 1e9
+        if self.use_counts:
+            counts = mask.float().sum(dim=-1)
+            counts = torch.max(counts, torch.ones_like(counts))  # >=1
+
+        if self.use_fts_bn:
+            fts = self.bn_fts(features) * mask
+        else:
+            fts = features
+        outputs = []
+        for idx, conv in enumerate(self.edge_convs):
+            pts = (points if idx == 0 else fts) + coord_shift
+            fts = conv(pts, fts) * mask
+            if self.use_fusion:
+                outputs.append(fts)
+        if self.use_fusion:
+            fts = self.fusion_block(torch.cat(outputs, dim=1)) * mask
+
+#         assert(((fts.abs().sum(dim=1, keepdim=True) != 0).float() - mask.float()).abs().sum().item() == 0)
+        
+        if self.use_counts:
+            x = fts.sum(dim=-1) / counts  # divide by the real counts
+        else:
+            x = fts.mean(dim=-1)
+        output = self.fc(x)
+        output = torch.cat( (output, high_level), dim=1)
+        output = self.fc2(output)
+        if self.for_inference:
+            output = torch.softmax(output, dim=1)
+
+        return output
