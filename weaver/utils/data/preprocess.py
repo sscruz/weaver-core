@@ -200,7 +200,7 @@ class WeightMaker(object):
         _logger.info('Using %d events to make weights', len(table))
 
         sum_evts = 0
-        max_weight = 0.9
+        max_weight = 1.0 
         raw_hists = {}
         class_events = {}
         result = {}
