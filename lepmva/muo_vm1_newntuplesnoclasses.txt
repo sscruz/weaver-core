@@ -1,0 +1,77 @@
+treename: Events
+selection: null
+test_time_selection: null
+preprocess:
+  method: manual
+  data_fraction: 0.1
+  params: null
+new_variables:
+  label_prompt: (genPartFlav == 1) | (genPartFlav == 15)
+  label_lightfakeheavy: (genPartFlav != 1) & (genPartFlav != 15)
+  pf_mask: ak.ones_like(PF_pt)
+  SV_mask: ak.ones_like(SV_pt)
+  MuonSelected_LepGood_abseta: np.abs(MuonSelected_LepGood_eta[:,0])
+  MuonSelected_LepGood_thept: np.abs(MuonSelected_LepGood_pt[:,0])
+inputs:
+  pf_points:
+    length: 40
+    vars:
+    - PF_phi_rel
+    - PF_eta_rel
+  pf_features:
+    length: 40
+    vars:
+    - PF_pt
+    - PF_eta_rel
+    - PF_phi_rel
+    - PF_charge
+    - PF_isElectron
+    - PF_isMuon
+    - PF_isNeutralHadron
+    - PF_isPhoton
+    - PF_isChargedHadron
+  pf_mask:
+    length: 40
+    vars:
+    - pf_mask
+  sv_points:
+    length: 4
+    vars:
+    - SV_eta
+    - SV_phi
+  sv_features:
+    length: 4
+    vars:
+    - SV_pt
+    - SV_phi
+    - SV_eta
+    - SV_dlenSig
+    - SV_dxy
+    - SV_ndof
+    - SV_chi2
+  sv_mask:
+    length: 4
+    vars:
+    - SV_mask
+  high_level:
+    length: 1
+    vars:
+    - MuonSelected_dxy
+    - MuonSelected_dz
+    - MuonSelected_sip3d
+    - MuonSelected_segmentComp
+    - MuonSelected_LepGood_jetDF
+    - MuonSelected_LepGood_jetPtRatio
+    - MuonSelected_LepGood_jetNDauChargedMVASel
+    - MuonSelected_LepGood_dz
+    - MuonSelected_LepGood_eta
+    - MuonSelected_LepGood_miniRelIsoNeutral
+    - MuonSelected_LepGood_jetPtRelv2
+    - MuonSelected_LepGood_miniRelIsoCharged
+labels:
+  type: simple
+  value:
+  - label_prompt
+  - label_lightfakeheavy
+
+

@@ -1,0 +1,142 @@
+treename: Events
+selection: null
+test_time_selection: null
+preprocess:
+  method: manual
+  data_fraction: 0.1
+  params: null
+new_variables:
+  label_prompt: (genPartFlav == 1)
+  label_tau: (genPartFlav == 15)
+  label_heavy: (genPartFlav == 5)
+  label_lightfake: (genPartFlav != 1) & (genPartFlav != 15) & (genPartFlav != 5)
+  pf_mask: ak.ones_like(PF_pt)
+  SV_mask: ak.ones_like(SV_pt)
+  MuonSelected_LepGood_abseta: np.abs(MuonSelected_LepGood_eta[:,0])
+  MuonSelected_LepGood_thept: np.abs(MuonSelected_LepGood_pt[:,0])
+inputs:
+  pf_points:
+    length: 40
+    vars:
+    - PF_phi_rel
+    - PF_eta_rel
+  pf_features:
+    length: 40
+    vars:
+    - PF_pt
+    - PF_eta_rel
+    - PF_phi_rel
+    - PF_charge
+    - PF_isElectron
+    - PF_isMuon
+    - PF_isNeutralHadron
+    - PF_isPhoton
+    - PF_isChargedHadron
+  pf_mask:
+    length: 40
+    vars:
+    - pf_mask
+  sv_points:
+    length: 4
+    vars:
+    - SV_eta
+    - SV_phi
+  sv_features:
+    length: 4
+    vars:
+    - SV_pt
+    - SV_phi
+    - SV_eta
+    - SV_dlenSig
+    - SV_dxy
+    - SV_ndof
+    - SV_chi2
+  sv_mask:
+    length: 4
+    vars:
+    - SV_mask
+  high_level:
+    length: 1
+    vars:
+    - MuonSelected_dxy
+    - MuonSelected_dz
+    - MuonSelected_sip3d
+    - MuonSelected_segmentComp
+    - MuonSelected_LepGood_jetDF
+    - MuonSelected_LepGood_jetPtRatio
+    - MuonSelected_LepGood_jetNDauChargedMVASel
+    - MuonSelected_LepGood_dz
+    - MuonSelected_LepGood_eta
+    - MuonSelected_LepGood_miniRelIsoNeutral
+    - MuonSelected_LepGood_jetPtRelv2
+    - MuonSelected_LepGood_miniRelIsoCharged
+labels:
+  type: simple
+  value:
+  - label_lightfake
+  - label_prompt
+  - label_tau
+  - label_heavy
+observers: []
+monitor_variables: []
+weights:
+  use_precomputed_weights: false
+  reweight_method: ref
+  reweight_vars:
+    MuonSelected_LepGood_thept:
+    - 5
+    - 6.0
+    - 9.0
+    - 18
+    - 13000
+    MuonSelected_LepGood_abseta:
+    - 0
+    - 1.2
+    - 2.4
+  reweight_classes:
+  - label_lightfake
+  - label_prompt
+  - label_tau
+  - label_heavy
+  class_weights:
+  - 1
+  - 4
+  - 4
+  - 4
+  reweight_hists:
+    label_lightfake:
+    - - 0.2518289387226105
+      - 0.2518289387226105
+    - - 0.2518289387226105
+      - 0.2518289387226105
+    - - 0.2518289387226105
+      - 0.2518289387226105
+    - - 0.2518289387226105
+      - 0.2518289387226105
+    label_prompt:
+    - - 1.0
+      - 0.9403212070465088
+    - - 0.26829931139945984
+      - 0.2470303475856781
+    - - 0.031641703099012375
+      - 0.03516002371907234
+    - - 0.0031261423137038946
+      - 0.003662458388134837
+    label_tau:
+    - - 0.436073362827301
+      - 0.5366330146789551
+    - - 0.1922960877418518
+      - 0.31369641423225403
+    - - 0.07146580517292023
+      - 0.105071060359478
+    - - 0.04101511090993881
+      - 0.05135900527238846
+    label_heavy:
+    - - 0.3463568091392517
+      - 0.3896696865558624
+    - - 0.20346711575984955
+      - 0.2679287791252136
+    - - 0.12149988114833832
+      - 0.14288702607154846
+    - - 0.1163099929690361
+      - 0.10922682285308838
